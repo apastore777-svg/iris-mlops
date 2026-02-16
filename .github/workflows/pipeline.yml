@@ -1,19 +1,53 @@
-name: CI-CD-ML
+name: Iris CI/CD Pipeline
 
 on:
   push:
     branches:
-      - dev
-      - qa
       - main
 
+env:
+  AWS_REGION: us-east-2
+  ECR_REPOSITORY: iris-api
+  ACCOUNT_ID: 494722910828
+
 jobs:
-  build-and-deploy:
+
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login ECR
+        run: |
+          aws ecr get-login-password --region $AWS_REGION \
+          | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+      - name: Build Image
+        run: docker build -t iris-api .
+
+      - name: Tag Image
+        run: |
+          docker tag iris-api:latest $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
+
+      - name: Push Image
+        run: |
+          docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
+
+  deploy-dev:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - uses: actions/checkout@v3
 
       - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v2
@@ -22,32 +56,51 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-2
 
-      - name: Login ECR
-        run: |
-          aws ecr get-login-password --region us-east-2 | \
-          docker login --username AWS --password-stdin 494722910828.dkr.ecr.us-east-2.amazonaws.com
-
-      - name: Build Docker
-        run: docker build -t iris-api .
-
-      - name: Tag Image
-        run: docker tag iris-api 494722910828.dkr.ecr.us-east-2.amazonaws.com/iris-api:latest
-
-      - name: Push Image
-        run: docker push 494722910828.dkr.ecr.us-east-2.amazonaws.com/iris-api:latest
-
-      - name: Setup kubectl
-        uses: azure/setup-kubectl@v3
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ml-cluster --region us-east-2
 
       - name: Deploy DEV
-        if: github.ref == 'refs/heads/dev'
-        run: kubectl apply -f deployment-dev.yaml -n dev
+        run: kubectl apply -f k8s/dev/deployment.yaml
+
+  deploy-qa:
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    environment: qa
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ml-cluster --region us-east-2
 
       - name: Deploy QA
-        if: github.ref == 'refs/heads/qa'
-        run: kubectl apply -f deployment-qa.yaml -n qa
+        run: kubectl apply -f k8s/qa/deployment.yaml
+
+  deploy-prod:
+    needs: deploy-qa
+    runs-on: ubuntu-latest
+    environment: prod
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Configure AWS
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ml-cluster --region us-east-2
 
       - name: Deploy PROD
-        if: github.ref == 'refs/heads/main'
-        run: kubectl apply -f deployment-prod.yaml -n prod
+        run: kubectl apply -f k8s/prod/deployment.yaml
 
