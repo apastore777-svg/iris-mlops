@@ -9,6 +9,7 @@ env:
   AWS_REGION: us-east-2
   ECR_REPOSITORY: iris-api
   ACCOUNT_ID: 494722910828
+  IMAGE_TAG: ${{ github.sha }}
 
 jobs:
 
@@ -31,15 +32,16 @@ jobs:
           | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
       - name: Build Image
-        run: docker build -t iris-api .
+        run: docker build -t iris-api:$IMAGE_TAG .
 
       - name: Tag Image
         run: |
-          docker tag iris-api:latest $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
+          docker tag iris-api:$IMAGE_TAG \
+          $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Push Image
         run: |
-          docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:latest
+          docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
 
   deploy-dev:
     needs: build
@@ -54,10 +56,13 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name ml-cluster --region us-east-2
+        run: aws eks update-kubeconfig --name ml-cluster --region $AWS_REGION
+
+      - name: Replace Image Tag DEV
+        run: sed -i "s|IMAGE_TAG|$IMAGE_TAG|g" k8s/dev/deployment.yaml
 
       - name: Deploy DEV
         run: kubectl apply -f k8s/dev/deployment.yaml
@@ -75,10 +80,13 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name ml-cluster --region us-east-2
+        run: aws eks update-kubeconfig --name ml-cluster --region $AWS_REGION
+
+      - name: Replace Image Tag QA
+        run: sed -i "s|IMAGE_TAG|$IMAGE_TAG|g" k8s/qa/deployment.yaml
 
       - name: Deploy QA
         run: kubectl apply -f k8s/qa/deployment.yaml
@@ -96,10 +104,13 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name ml-cluster --region us-east-2
+        run: aws eks update-kubeconfig --name ml-cluster --region $AWS_REGION
+
+      - name: Replace Image Tag PROD
+        run: sed -i "s|IMAGE_TAG|$IMAGE_TAG|g" k8s/prod/deployment.yaml
 
       - name: Deploy PROD
         run: kubectl apply -f k8s/prod/deployment.yaml
