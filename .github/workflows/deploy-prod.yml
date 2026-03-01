@@ -2,67 +2,47 @@ name: Deploy Production
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 env:
   MODEL_NAME: iris-classifier
   AWS_REGION: ${{ secrets.AWS_REGION }}
-  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
 
-  SAGEMAKER_ENDPOINT: iris-endpoint
-
-
 jobs:
-
   deploy:
-
     runs-on: ubuntu-latest
     environment: prod
 
     steps:
 
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
 
-    - uses: actions/setup-python@v4
-      with:
-        python-version: "3.10"
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
 
 
-    - run: pip install mlflow boto3 awscli
+      - run: pip install mlflow boto3 awscli
 
 
-    - name: Get PRODUCTION version
-      run: |
-
-        VERSION=$(python <<EOF
+      - name: Get production version
+        run: |
+          python <<EOF >> version.txt
 from mlflow.tracking import MlflowClient
 import os
-
 client = MlflowClient()
-
 v = client.get_latest_versions(
     os.environ["MODEL_NAME"],
     stages=["Production"]
 )
-
 print(v[0].version)
 EOF
-)
-
-        echo "VERSION=$VERSION" >> $GITHUB_ENV
 
 
-    - uses: aws-actions/configure-aws-credentials@v3
-      with:
-        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        aws-region: ${{ secrets.AWS_REGION }}
-
-
-    - name: Deploy SageMaker
-      run: |
-
-        bash scripts/deploy_sagemaker.sh $VERSION
+      - name: Deploy SageMaker
+        run: |
+          echo "Deploy production model"
