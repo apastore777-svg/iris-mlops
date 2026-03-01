@@ -34,21 +34,21 @@ jobs:
       - name: Build image
         run: |
           docker build \
-            -t iris-model:latest \
+            -t iris-model:${{ github.sha }} \
             -f serving/iris/Dockerfile \
             .
 
 
       - name: Tag image
         run: |
-          docker tag iris-model:latest \
-          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/iris-model:latest
+          docker tag iris-model:${{ github.sha }} \
+          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/iris-model:${{ github.sha }}
 
 
       - name: Push image
         run: |
           docker push \
-          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/iris-model:latest
+          ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com/iris-model:${{ github.sha }}
 
 
       - name: Update kubeconfig
@@ -56,6 +56,11 @@ jobs:
           aws eks update-kubeconfig \
             --name ml-cluster-v3 \
             --region ${{ secrets.AWS_REGION }}
+
+
+      - name: Set image tag
+        run: |
+          sed -i "s|IMAGE_TAG|${{ github.sha }}|g" infra/kubernetes/dev/deployment.yaml
 
 
       - name: Deploy to EKS
