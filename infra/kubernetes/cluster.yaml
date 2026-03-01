@@ -1,0 +1,27 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: ml-cluster-v3
+  region: us-east-2
+  version: "1.35"
+
+vpc:
+  id: vpc-0c429fd734826c7da
+  subnets:
+    public:
+      us-east-2a:
+        id: subnet-06f31204977dc25b5
+      us-east-2b:
+        id: subnet-05662b76089c112aa
+      us-east-2c:
+        id: subnet-0d173a7fe992f58b9
+managedNodeGroups:
+  - name: ml-nodes
+    instanceType: t3.micro
+    desiredCapacity: 2
+    minSize: 1
+    maxSize: 3
+    privateNetworking: false
+    tags:
+      environment: lab

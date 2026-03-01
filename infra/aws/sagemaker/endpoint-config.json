@@ -1,0 +1,11 @@
+{
+  "EndpointConfigName": "iris-config",
+  "ProductionVariants": [
+    {
+      "VariantName": "AllTraffic",
+      "ModelName": "iris-model",
+      "InstanceType": "ml.t2.medium",
+      "InitialInstanceCount": 1
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+name: Deploy Production
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  deploy:
+
+    runs-on: ubuntu-latest
+
+    environment: production
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.11
+
+    - name: Install MLflow
+      run: pip install mlflow awscli
+
+    - name: Deploy from MLflow
+      run: |
+        chmod +x scripts/deploy_from_mlflow.sh
+        ./scripts/deploy_from_mlflow.sh Production

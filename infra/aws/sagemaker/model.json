@@ -1,0 +1,7 @@
+{
+  "ModelName": "iris-model",
+  "PrimaryContainer": {
+    "Image": "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/iris-model:latest"
+  },
+  "ExecutionRoleArn": "SAGEMAKER_ROLE"
+}

@@ -9,7 +9,7 @@ env:
   AWS_REGION: us-east-2
   ECR_REPOSITORY: iris-api
   ACCOUNT_ID: 494722910828
-  IMAGE_TAG: ${{ github.sha }}
+  IMAGE_TAG: v1.0.${{ github.run_number }}
 
 jobs:
 
@@ -17,7 +17,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
       - name: Configure AWS
         uses: aws-actions/configure-aws-credentials@v2
@@ -32,11 +33,11 @@ jobs:
           | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
       - name: Build Image
-        run: docker build -t iris-api:$IMAGE_TAG .
+        run: docker build -t iris-api .
 
       - name: Tag Image
         run: |
-          docker tag iris-api:$IMAGE_TAG \
+          docker tag iris-api:latest \
           $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$IMAGE_TAG
 
       - name: Push Image
@@ -56,16 +57,14 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: us-east-2
 
       - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name ml-cluster --region $AWS_REGION
-
-      - name: Replace Image Tag DEV
-        run: sed -i "s|IMAGE_TAG|$IMAGE_TAG|g" k8s/dev/deployment.yaml
+        run: aws eks update-kubeconfig --name ml-cluster --region us-east-2
 
       - name: Deploy DEV
-        run: kubectl apply -f k8s/dev/deployment.yaml
+        run: |
+          kubectl set image deployment/iris-api-dev iris-api=494722910828.dkr.ecr.us-east-2.amazonaws.com/iris-api:$IMAGE_TAG
 
   deploy-qa:
     needs: deploy-dev
@@ -80,16 +79,14 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: us-east-2
 
       - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name ml-cluster --region $AWS_REGION
-
-      - name: Replace Image Tag QA
-        run: sed -i "s|IMAGE_TAG|$IMAGE_TAG|g" k8s/qa/deployment.yaml
+        run: aws eks update-kubeconfig --name ml-cluster --region us-east-2
 
       - name: Deploy QA
-        run: kubectl apply -f k8s/qa/deployment.yaml
+        run: |
+          kubectl set image deployment/iris-api-qa iris-api=494722910828.dkr.ecr.us-east-2.amazonaws.com/iris-api:$IMAGE_TAG
 
   deploy-prod:
     needs: deploy-qa
@@ -104,14 +101,12 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: us-east-2
 
       - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name ml-cluster --region $AWS_REGION
-
-      - name: Replace Image Tag PROD
-        run: sed -i "s|IMAGE_TAG|$IMAGE_TAG|g" k8s/prod/deployment.yaml
+        run: aws eks update-kubeconfig --name ml-cluster --region us-east-2
 
       - name: Deploy PROD
-        run: kubectl apply -f k8s/prod/deployment.yaml
+        run: |
+          kubectl set image deployment/iris-api-prod iris-api=494722910828.dkr.ecr.us-east-2.amazonaws.com/iris-api:$IMAGE_TAG
 

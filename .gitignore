@@ -1,0 +1,8 @@
+venv/
+mlruns/
+training/mlruns/
+__pycache__/
+*.pyc
+.env
+build/
+structure.txt

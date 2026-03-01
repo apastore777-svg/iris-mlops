@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: iris-api-prod
+  labels:
+    app: iris-api
+    env: prod
+
+spec:
+  type: LoadBalancer
+  selector:
+    app: iris-api
+    env: prod
+
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
+
