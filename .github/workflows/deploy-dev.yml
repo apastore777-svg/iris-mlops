@@ -11,21 +11,135 @@ env:
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
   MODEL_NAME: iris-classifier
+  ECR_REPOSITORY: iris-model
+  EKS_CLUSTER: iris-cluster
+  K8S_NAMESPACE: dev
+  DEPLOYMENT_NAME: iris-api-dev
+  CONTAINER_NAME: iris-api
 
 jobs:
+
   deploy:
+
     runs-on: ubuntu-latest
 
     steps:
 
-      - name: Checkout
-        uses: actions/checkout@v3
+    # checkout repo
+    - name: Checkout
+      uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
 
-      - name: Install dependencies
-        run: |
-          pip install mlflow boto3 awscli
+    # python
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+
+
+    # install dependencies
+    - name: Install dependencies
+      run: |
+        pip install mlflow boto3 awscli
+
+
+    # get latest MLflow version
+    - name: Get model version
+      id: model_version
+      run: |
+
+        VERSION=$(python <<EOF
+from mlflow.tracking import MlflowClient
+import os
+
+client = MlflowClient()
+model = os.environ["MODEL_NAME"]
+
+versions = client.get_latest_versions(model)
+
+print(versions[0].version)
+EOF
+)
+
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "Using model version: $VERSION"
+
+
+    # download model artifacts
+    - name: Download model
+      run: |
+
+        mlflow artifacts download \
+          --artifact-uri models:/$MODEL_NAME/$VERSION \
+          --dst-path ./model
+
+
+    # configure AWS
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v3
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+
+    # login ECR
+    - name: Login to ECR
+      run: |
+
+        aws ecr get-login-password \
+        | docker login \
+          --username AWS \
+          --password-stdin \
+          $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+
+    # build docker image
+    - name: Build Docker image
+      run: |
+
+        docker build \
+          -t $ECR_REPOSITORY:$VERSION .
+
+
+    # tag image
+    - name: Tag Docker image
+      run: |
+
+        docker tag \
+        $ECR_REPOSITORY:$VERSION \
+        $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$VERSION
+
+
+    # push image
+    - name: Push Docker image
+      run: |
+
+        docker push \
+        $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$VERSION
+
+
+    # configure kubectl
+    - name: Configure kubectl
+      run: |
+
+        aws eks update-kubeconfig \
+          --name $EKS_CLUSTER \
+          --region $AWS_REGION
+
+
+    # deploy
+    - name: Deploy to EKS DEV
+      run: |
+
+        kubectl set image deployment/$DEPLOYMENT_NAME \
+          $CONTAINER_NAME=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$VERSION \
+          -n $K8S_NAMESPACE
+
+
+    # wait rollout
+    - name: Wait rollout
+      run: |
+
+        kubectl rollout status deployment/$DEPLOYMENT_NAME \
+          -n $K8S_NAMESPACE
