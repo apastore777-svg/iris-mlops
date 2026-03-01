@@ -48,7 +48,10 @@ jobs:
 
       - name: Build image
         run: |
-          docker build -t iris-model:latest ./serving/iris
+          docker build \
+          -t iris-model:latest \
+          -f serving/iris/Dockerfile \
+         .
 
 
       - name: Push image
