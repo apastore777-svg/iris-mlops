@@ -6,8 +6,22 @@ on:
       - dev
   workflow_dispatch:
 
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+
+  ECR_REPOSITORY: iris-model
+  EKS_CLUSTER: iris-cluster
+
+  NAMESPACE: dev
+  DEPLOYMENT: iris-api-dev
+  CONTAINER: iris-api
+
+
 jobs:
+
   deploy:
+
     runs-on: ubuntu-latest
     environment: dev
 
@@ -15,9 +29,46 @@ jobs:
 
       - uses: actions/checkout@v3
 
-      - uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
 
-      - run: |
-          pip install mlflow
+      - uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+
+      - name: Login ECR
+        run: |
+          aws ecr get-login-password \
+          | docker login \
+          --username AWS \
+          --password-stdin \
+          $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+
+
+      - name: Build image
+        run: |
+          docker build -t iris-model:latest .
+
+
+      - name: Push image
+        run: |
+          docker tag iris-model:latest \
+          $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/iris-model:latest
+
+          docker push \
+          $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/iris-model:latest
+
+
+      - name: Deploy EKS
+        run: |
+
+          aws eks update-kubeconfig \
+            --name $EKS_CLUSTER \
+            --region $AWS_REGION
+
+          kubectl set image deployment/$DEPLOYMENT \
+          $CONTAINER=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/iris-model:latest \
+          -n $NAMESPACE
+
+          kubectl rollout status deployment/$DEPLOYMENT -n $NAMESPACE
