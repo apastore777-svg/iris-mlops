@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: iris-api
-        image: 494722910828.dkr.ecr.us-east-2.amazonaws.com/iris-model:latest
+        image: 494722910828.dkr.ecr.us-east-2.amazonaws.com/iris-model:IMAGE_TAG 
 
         ports:
         - containerPort: 8080
