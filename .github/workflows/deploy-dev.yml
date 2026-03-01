@@ -1,29 +1,36 @@
-name: Deploy Dev
-
-on:
-  workflow_dispatch:
-
 jobs:
-
   deploy:
-
     runs-on: ubuntu-latest
 
     steps:
 
-    - uses: actions/checkout@v3
+    - name: Checkout
+      uses: actions/checkout@v3
+
+
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+
+    - name: Install dependencies
+      run: |
+        pip install mlflow boto3 awscli
+
 
     - name: Download model
       run: |
         mlflow artifacts download \
-        --artifact-uri models:/iris-classifier/Staging \
-        --dst-path build/
+          --artifact-uri models:/iris-classifier/latest \
+          --dst-path ./models
+
 
     - name: Build image
-      run: docker build -t iris-model build/
+      run: |
+        docker build -t iris-model .
+
 
     - name: Push image
-      run: docker push ...
-
-    - name: Deploy EKS
-      run: kubectl apply -f infra/kubernetes/dev/
+      run: |
+        echo "push step"
