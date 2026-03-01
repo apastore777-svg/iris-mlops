@@ -2,8 +2,7 @@ name: Deploy Dev
 
 on:
   push:
-    branches:
-      - dev
+    branches: [dev]
 
   workflow_dispatch:
 
@@ -11,73 +10,106 @@ env:
   AWS_REGION: ${{ secrets.AWS_REGION }}
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
   MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+  MODEL_NAME: iris-classifier
 
 jobs:
+
   deploy:
+
     runs-on: ubuntu-latest
 
     steps:
 
-      - name: Checkout
-        uses: actions/checkout@v3
+    - uses: actions/checkout@v3
 
 
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+    - name: Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
 
 
-      - name: Install dependencies
-        run: |
-          pip install mlflow boto3 awscli
+    - name: Install dependencies
+      run: pip install mlflow boto3 awscli
 
 
-      - name: Download model
-        run: |
-          mlflow artifacts download \
-            --artifact-uri models:/iris-classifier/latest \
-            --dst-path ./model
+    # GET LATEST VERSION
+    - name: Get model version
+      id: version
+      run: |
+
+        VERSION=$(python <<EOF
+from mlflow.tracking import MlflowClient
+import os
+
+client = MlflowClient()
+model = os.environ["MODEL_NAME"]
+
+versions = client.get_latest_versions(model)
+print(versions[0].version)
+EOF
+)
+
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+        echo "Model version: $VERSION"
 
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v3
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+    - name: Download model
+      run: |
+
+        mlflow artifacts download \
+          --artifact-uri models:/$MODEL_NAME/$VERSION \
+          --dst-path ./model
 
 
-      - name: Login to ECR
-        run: |
-          aws ecr get-login-password \
-          | docker login \
-            --username AWS \
-            --password-stdin \
-            $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+    - name: Configure AWS
+      uses: aws-actions/configure-aws-credentials@v3
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
 
 
-      - name: Build image
-        run: |
-          docker build -t iris-model .
+    - name: Login ECR
+      run: |
+
+        aws ecr get-login-password \
+        | docker login \
+          --username AWS \
+          --password-stdin \
+          $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
 
-      - name: Tag image
-        run: |
-          docker tag iris-model:latest \
-          $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/iris-model:latest
+    - name: Build image
+      run: |
+
+        docker build \
+          -t iris-model:$VERSION .
 
 
-      - name: Push image
-        run: |
-          docker push \
-          $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/iris-model:latest
+    - name: Tag image
+      run: |
+
+        docker tag iris-model:$VERSION \
+        $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/iris-model:$VERSION
 
 
-      - name: Deploy to EKS
-        run: |
-          aws eks update-kubeconfig \
-            --name iris-cluster \
-            --region $AWS_REGION
+    - name: Push image
+      run: |
 
-          kubectl apply -f infra/kubernetes/dev/
+        docker push \
+        $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/iris-model:$VERSION
+
+
+    - name: Deploy to EKS
+      run: |
+
+        aws eks update-kubeconfig \
+          --name iris-cluster \
+          --region $AWS_REGION
+
+        kubectl set image deployment/iris-api-dev \
+          iris-api=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/iris-model:$VERSION \
+          -n dev
+
+        kubectl rollout status deployment/iris-api-dev -n dev
