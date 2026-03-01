@@ -1,0 +1,16 @@
+name: Deploy QA
+
+on:
+  push:
+    branches:
+      - qa
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: qa
+
+    steps:
+      - uses: actions/checkout@v3
+      - run: echo "Deploy QA OK"
