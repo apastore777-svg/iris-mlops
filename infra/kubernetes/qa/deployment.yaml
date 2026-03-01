@@ -1,20 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
+
 metadata:
   name: iris-api-qa
+  namespace: qa 
+
 spec:
   replicas: 1
+
   selector:
     matchLabels:
-      app: iris-api-dev
+      app: iris-api-qa
+
   template:
     metadata:
       labels:
-        app: iris-api-dev
+        app: iris-api-qa
+
     spec:
       containers:
-        - name: iris-api
-          image: 494722910828.dkr.ecr.us-east-2.amazonaws.com/iris-api:PLACEHOLDER
-          ports:
-            - containerPort: 5000
+      - name: iris-api
+        image: 494722910828.dkr.ecr.us-east-2.amazonaws.com/iris-model:IMAGE_TAG 
 
+        ports:
+        - containerPort: 8080
