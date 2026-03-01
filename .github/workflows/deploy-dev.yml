@@ -54,7 +54,7 @@ jobs:
       - name: Update kubeconfig
         run: |
           aws eks update-kubeconfig \
-            --name iris-cluster \
+            --name ml-cluster-v3 \
             --region ${{ secrets.AWS_REGION }}
 
 
