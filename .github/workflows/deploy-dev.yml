@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - dev
+<<<<<<< HEAD
 
 jobs:
 
@@ -66,3 +67,15 @@ jobs:
       - name: Deploy to EKS
         run: |
           kubectl apply -f infra/kubernetes/dev/
+=======
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: dev
+
+    steps:
+      - uses: actions/checkout@v3
+      - run: echo "Deploy DEV OK"
+>>>>>>> qa
