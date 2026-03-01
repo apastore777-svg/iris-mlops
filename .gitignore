@@ -6,3 +6,5 @@ __pycache__/
 .env
 build/
 structure.txt
+infra/kubernetes/platform/istio/bin/
+infra/kubernetes/platform/istio/
