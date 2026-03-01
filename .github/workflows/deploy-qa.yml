@@ -6,63 +6,10 @@ on:
       - qa
   workflow_dispatch:
 
-env:
-  MODEL_NAME: iris-classifier
-  ECR_REPOSITORY: iris-model
-  EKS_CLUSTER: iris-cluster
-  NAMESPACE: qa
-  DEPLOYMENT: iris-api-qa
-  CONTAINER: iris-api
-  AWS_REGION: ${{ secrets.AWS_REGION }}
-  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-  MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: qa
 
     steps:
-
       - uses: actions/checkout@v3
-
-
-      - uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
-
-
-      - run: pip install mlflow boto3 awscli
-
-
-      - name: Get staging version
-        run: |
-          python <<EOF >> version.txt
-from mlflow.tracking import MlflowClient
-import os
-client = MlflowClient()
-v = client.get_latest_versions(
-    os.environ["MODEL_NAME"],
-    stages=["Staging"]
-)
-print(v[0].version)
-EOF
-          VERSION=$(cat version.txt)
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-
-      - uses: aws-actions/configure-aws-credentials@v3
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-
-      - run: |
-          aws eks update-kubeconfig \
-          --name $EKS_CLUSTER \
-          --region $AWS_REGION
-
-          kubectl set image deployment/$DEPLOYMENT \
-          $CONTAINER=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$VERSION \
-          -n $NAMESPACE
