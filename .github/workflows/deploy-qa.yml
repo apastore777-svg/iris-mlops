@@ -1,8 +1,8 @@
-name: Deploy Dev
+name: Deploy QA
 
 on:
   push:
-    branches: [dev]
+    branches: [qa]
   workflow_dispatch:
 
 env:
@@ -14,8 +14,8 @@ env:
   ECR_REPOSITORY: iris-model
   EKS_CLUSTER: iris-cluster
 
-  NAMESPACE: dev
-  DEPLOYMENT: iris-api-dev
+  NAMESPACE: qa
+  DEPLOYMENT: iris-api-qa
   CONTAINER: iris-api
 
 
@@ -24,26 +24,22 @@ jobs:
   deploy:
 
     runs-on: ubuntu-latest
-    environment: dev
+    environment: qa
 
     steps:
 
-    - name: Checkout
-      uses: actions/checkout@v3
+    - uses: actions/checkout@v3
 
 
-    - name: Setup Python
-      uses: actions/setup-python@v4
+    - uses: actions/setup-python@v4
       with:
         python-version: "3.10"
 
 
-    - name: Install dependencies
-      run: |
-        pip install mlflow boto3 awscli
+    - run: pip install mlflow boto3 awscli
 
 
-    - name: Get latest MLflow version
+    - name: Get STAGING version
       run: |
 
         VERSION=$(python <<EOF
@@ -53,7 +49,8 @@ import os
 client = MlflowClient()
 
 v = client.get_latest_versions(
-    os.environ["MODEL_NAME"]
+    os.environ["MODEL_NAME"],
+    stages=["Staging"]
 )
 
 print(v[0].version)
@@ -61,19 +58,17 @@ EOF
 )
 
         echo "VERSION=$VERSION" >> $GITHUB_ENV
-        echo "Using version $VERSION"
 
 
     - name: Download model
       run: |
 
         mlflow artifacts download \
-          --artifact-uri models:/$MODEL_NAME/$VERSION \
-          --dst-path ./model
+        --artifact-uri models:/$MODEL_NAME/$VERSION \
+        --dst-path ./model
 
 
-    - name: Configure AWS
-      uses: aws-actions/configure-aws-credentials@v3
+    - uses: aws-actions/configure-aws-credentials@v3
       with:
         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -107,7 +102,7 @@ EOF
         $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPOSITORY:$VERSION
 
 
-    - name: Deploy to EKS DEV
+    - name: Deploy QA
       run: |
 
         aws eks update-kubeconfig \

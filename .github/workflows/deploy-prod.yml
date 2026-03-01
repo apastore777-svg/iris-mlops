@@ -1,30 +1,68 @@
 name: Deploy Production
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
+
+env:
+  MODEL_NAME: iris-classifier
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+
+  SAGEMAKER_ENDPOINT: iris-endpoint
+
 
 jobs:
 
   deploy:
 
     runs-on: ubuntu-latest
-
-    environment: production
+    environment: prod
 
     steps:
 
-    - name: Checkout
-      uses: actions/checkout@v3
+    - uses: actions/checkout@v3
 
-    - name: Setup Python
-      uses: actions/setup-python@v4
+
+    - uses: actions/setup-python@v4
       with:
-        python-version: 3.11
+        python-version: "3.10"
 
-    - name: Install MLflow
-      run: pip install mlflow awscli
 
-    - name: Deploy from MLflow
+    - run: pip install mlflow boto3 awscli
+
+
+    - name: Get PRODUCTION version
       run: |
-        chmod +x scripts/deploy_from_mlflow.sh
-        ./scripts/deploy_from_mlflow.sh Production
+
+        VERSION=$(python <<EOF
+from mlflow.tracking import MlflowClient
+import os
+
+client = MlflowClient()
+
+v = client.get_latest_versions(
+    os.environ["MODEL_NAME"],
+    stages=["Production"]
+)
+
+print(v[0].version)
+EOF
+)
+
+        echo "VERSION=$VERSION" >> $GITHUB_ENV
+
+
+    - uses: aws-actions/configure-aws-credentials@v3
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ secrets.AWS_REGION }}
+
+
+    - name: Deploy SageMaker
+      run: |
+
+        bash scripts/deploy_sagemaker.sh $VERSION
