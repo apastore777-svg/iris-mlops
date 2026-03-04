@@ -8,3 +8,16 @@ build/
 structure.txt
 infra/kubernetes/platform/istio/bin/
 infra/kubernetes/platform/istio/
+# Docker artifacts
+response.json
+*.tar
+*.log
+
+# Local virtual env
+venv/
+.env
+
+# Random files
+Removed
+Running
+Using
