@@ -21,3 +21,20 @@ venv/
 Removed
 Running
 Using
+# Python
+__pycache__/
+*.pyc
+
+# virtualenv
+.venv/
+
+# MLflow local
+mlflow.db
+
+# artifacts
+*.json
+!create_endpoint.json
+
+# OS
+.DS_Store
+Thumbs.db

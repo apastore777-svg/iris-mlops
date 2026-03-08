@@ -1,62 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
-
 metadata:
-  name: iris-inference
-  namespace: dev
+  name: iris-api
   labels:
-    app: iris-inference
-
+    app: iris-api
 spec:
   replicas: 1
-
   selector:
     matchLabels:
-      app: iris-inference
-
+      app: iris-api
   template:
-
     metadata:
       labels:
-        app: iris-inference
-
+        app: iris-api
     spec:
-
       containers:
-
-      - name: iris-inference
-
-        image: 123456789.dkr.ecr.us-east-2.amazonaws.com/iris-model:v1
-
-        imagePullPolicy: Always
-
+      - name: iris-api
+        image: iris-mlops-api:latest
+        imagePullPolicy: Never
         ports:
         - containerPort: 8080
-
-        resources:
-
-          requests:
-            cpu: "100m"
-            memory: "128Mi"
-
-          limits:
-            cpu: "500m"
-            memory: "512Mi"
-
-        readinessProbe:
-
-          httpGet:
-            path: /health
-            port: 8080
-
-          initialDelaySeconds: 10
-          periodSeconds: 5
-
-        livenessProbe:
-
-          httpGet:
-            path: /health
-            port: 8080
-
-          initialDelaySeconds: 30
-          periodSeconds: 10

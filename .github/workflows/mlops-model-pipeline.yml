@@ -1,0 +1,85 @@
+name: MLOps Model Pipeline
+
+on:
+  workflow_dispatch:
+
+jobs:
+
+  train:
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.model.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - run: pip install mlflow requests scikit-learn
+
+      - name: Train model
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          python training/train_iris_mlflow.py
+
+      - name: Get latest version
+        id: model
+        run: |
+          VERSION=$(python scripts/get_latest_model_version.py)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+  test:
+    needs: train
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - run: pip install requests
+
+      - name: Test endpoint
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          python scripts/test_candidate.py
+
+  deploy:
+    needs: train
+    runs-on: ubuntu-latest
+
+    environment: prod   # agora corresponde ao seu environment
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - run: pip install mlflow requests
+
+      - name: Promote champion
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          VERSION=${{ needs.train.outputs.version }}
+          python scripts/promote_model.py $VERSION
+
+      - name: Update endpoint
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        run: |
+          VERSION=${{ needs.train.outputs.version }}
+          ./scripts/update_serving_endpoint.sh $VERSION
