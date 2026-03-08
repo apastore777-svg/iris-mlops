@@ -9,10 +9,10 @@ from sklearn.metrics import accuracy_score
 
 # MLflow server no EKS
 mlflow.set_tracking_uri(
-    "http://a8fe0a21bec93462da391532ddddacce-05b35fc46a839e90.elb.us-east-2.amazonaws.com:5000"
+    "databricks"
 )
 
-mlflow.set_experiment("iris-demo")
+mlflow.set_experiment("/Users/pastoreaws@gmail.com/iris-demo")
 
 
 iris = load_iris()
@@ -46,7 +46,7 @@ with mlflow.start_run(run_name="rf-iris-training"):
     mlflow.sklearn.log_model(
         sk_model=model,
         artifact_path="model",
-        registered_model_name="iris-classifier",
+        registered_model_name="workspace.default.iris-classifier",
         input_example=X_train[:5],
     )
 

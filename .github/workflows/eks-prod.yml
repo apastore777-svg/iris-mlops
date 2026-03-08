@@ -33,7 +33,7 @@ jobs:
       - name: Build Docker image
         run: |
           docker build \
-            -f app/Dockerfile \
+            -f serving/iris/Dockerfile \
             -t $ECR_REPO:k8s-prod-${{ github.sha }} .
 
       - name: Tag Docker image
