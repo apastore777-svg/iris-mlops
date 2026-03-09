@@ -1,9 +1,5 @@
-import os
 import mlflow
 from mlflow.tracking import MlflowClient
-
-# usar MLflow do Databricks
-mlflow.set_tracking_uri("databricks")
 
 model_name = "workspace.default.iris-classifier"
 
