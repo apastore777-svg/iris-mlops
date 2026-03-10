@@ -79,5 +79,3 @@ else:
     # primeiro modelo registrado
     print("No champion found")
     print("RESULT=promote")
-```
-
