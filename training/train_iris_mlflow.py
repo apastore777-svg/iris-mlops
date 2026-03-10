@@ -1,54 +1,84 @@
+```python
+import sys
 import mlflow
-import mlflow.sklearn
+from mlflow.tracking import MlflowClient
 
-from sklearn.datasets import load_iris
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score
+# ---------------------------------------------------
+# Configuração do MLflow no Databricks
+# ---------------------------------------------------
 
+mlflow.set_tracking_uri("databricks")
+mlflow.set_registry_uri("databricks-uc")
 
-# MLflow server no EKS
-mlflow.set_tracking_uri(
-    "databricks"
+MODEL_NAME = "workspace.default.iris-classifier"
+METRIC_NAME = "accuracy"
+
+client = MlflowClient()
+
+# ---------------------------------------------------
+# Funções auxiliares
+# ---------------------------------------------------
+
+def get_metric_for_version(model_name, version, metric_name):
+    mv = client.get_model_version(model_name, version)
+    run_id = mv.run_id
+    run = client.get_run(run_id)
+    return run.data.metrics.get(metric_name)
+
+def get_version_by_alias(model_name, alias):
+    try:
+        mv = client.get_model_version_by_alias(model_name, alias)
+        return mv.version
+    except Exception:
+        return None
+
+# ---------------------------------------------------
+# Recebe versão do challenger via argumento
+# ---------------------------------------------------
+
+if len(sys.argv) < 2:
+    raise ValueError("MODEL_VERSION não definido")
+
+challenger_version = sys.argv[1]
+
+# ---------------------------------------------------
+# Busca champion atual
+# ---------------------------------------------------
+
+champion_version = get_version_by_alias(MODEL_NAME, "champion")
+
+challenger_metric = get_metric_for_version(
+    MODEL_NAME,
+    challenger_version,
+    METRIC_NAME
 )
 
-mlflow.set_experiment("/Users/pastoreaws@gmail.com/iris-demo")
+print(f"Challenger version: {challenger_version}")
+print(f"Challenger {METRIC_NAME}: {challenger_metric}")
 
+# ---------------------------------------------------
+# Comparação Champion vs Challenger
+# ---------------------------------------------------
 
-iris = load_iris()
+if champion_version:
 
-X_train, X_test, y_train, y_test = train_test_split(
-    iris.data,
-    iris.target,
-    test_size=0.2,
-    random_state=42
-)
-
-
-with mlflow.start_run(run_name="rf-iris-training"):
-
-    model = RandomForestClassifier(
-        n_estimators=100,
-        random_state=42
+    champion_metric = get_metric_for_version(
+        MODEL_NAME,
+        champion_version,
+        METRIC_NAME
     )
 
-    model.fit(X_train, y_train)
+    print(f"Champion version: {champion_version}")
+    print(f"Champion {METRIC_NAME}: {champion_metric}")
 
-    predictions = model.predict(X_test)
+    if challenger_metric > champion_metric:
+        print("RESULT=promote")
+    else:
+        print("RESULT=skip")
 
-    accuracy = accuracy_score(y_test, predictions)
+else:
+    # primeiro modelo registrado
+    print("No champion found")
+    print("RESULT=promote")
+```
 
-
-    mlflow.log_param("n_estimators", 100)
-    mlflow.log_metric("accuracy", accuracy)
-
-
-    mlflow.sklearn.log_model(
-        sk_model=model,
-        artifact_path="model",
-        registered_model_name="workspace.default.iris-classifier",
-        input_example=X_train[:5],
-    )
-
-
-    print("Accuracy:", accuracy)
