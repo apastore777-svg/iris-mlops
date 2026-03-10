@@ -1,4 +1,5 @@
-import os
+```python
+import sys
 import mlflow
 from mlflow.tracking import MlflowClient
 
@@ -10,11 +11,13 @@ METRIC_NAME = "accuracy"
 
 client = MlflowClient()
 
+
 def get_metric_for_version(model_name, version, metric_name):
     mv = client.get_model_version(model_name, version)
     run_id = mv.run_id
     run = client.get_run(run_id)
     return run.data.metrics.get(metric_name)
+
 
 def get_version_by_alias(model_name, alias):
     try:
@@ -24,14 +27,23 @@ def get_version_by_alias(model_name, alias):
         return None
 
 
-challenger_version = os.environ.get("MODEL_VERSION")
-if not challenger_version:
+# ---------------------------------------------------
+# Recebe versão do challenger via argumento
+# ---------------------------------------------------
+
+if len(sys.argv) < 2:
     raise ValueError("MODEL_VERSION não definido")
+
+challenger_version = sys.argv[1]
 
 
 champion_version = get_version_by_alias(MODEL_NAME, "champion")
 
-challenger_metric = get_metric_for_version(MODEL_NAME, challenger_version, METRIC_NAME)
+challenger_metric = get_metric_for_version(
+    MODEL_NAME,
+    challenger_version,
+    METRIC_NAME
+)
 
 print(f"Challenger version: {challenger_version}")
 print(f"Challenger accuracy: {challenger_metric}")
@@ -39,7 +51,11 @@ print(f"Challenger accuracy: {challenger_metric}")
 
 if champion_version:
 
-    champion_metric = get_metric_for_version(MODEL_NAME, champion_version, METRIC_NAME)
+    champion_metric = get_metric_for_version(
+        MODEL_NAME,
+        champion_version,
+        METRIC_NAME
+    )
 
     print(f"Champion version: {champion_version}")
     print(f"Champion accuracy: {champion_metric}")
@@ -56,3 +72,5 @@ else:
 
 
 print(f"PROMOTE_DECISION={decision}")
+```
+
