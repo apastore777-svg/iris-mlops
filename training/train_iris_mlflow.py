@@ -1,81 +1,83 @@
-import sys
 import mlflow
-from mlflow.tracking import MlflowClient
+import mlflow.sklearn
+
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+
 
 # ---------------------------------------------------
-# Configuração do MLflow no Databricks
+# Configuração MLflow
 # ---------------------------------------------------
 
 mlflow.set_tracking_uri("databricks")
 mlflow.set_registry_uri("databricks-uc")
 
-MODEL_NAME = "workspace.default.iris-classifier"
-METRIC_NAME = "accuracy"
+mlflow.set_experiment("/Users/pastoreaws@gmail.com/iris-demo")
 
-client = MlflowClient()
 
 # ---------------------------------------------------
-# Funções auxiliares
+# Dataset
 # ---------------------------------------------------
 
-def get_metric_for_version(model_name, version, metric_name):
-    mv = client.get_model_version(model_name, version)
-    run_id = mv.run_id
-    run = client.get_run(run_id)
-    return run.data.metrics.get(metric_name)
+iris = load_iris()
 
-def get_version_by_alias(model_name, alias):
-    try:
-        mv = client.get_model_version_by_alias(model_name, alias)
-        return mv.version
-    except Exception:
-        return None
-
-# ---------------------------------------------------
-# Recebe versão do challenger via argumento
-# ---------------------------------------------------
-
-if len(sys.argv) < 2:
-    raise ValueError("MODEL_VERSION não definido")
-
-challenger_version = sys.argv[1]
-
-# ---------------------------------------------------
-# Busca champion atual
-# ---------------------------------------------------
-
-champion_version = get_version_by_alias(MODEL_NAME, "champion")
-
-challenger_metric = get_metric_for_version(
-    MODEL_NAME,
-    challenger_version,
-    METRIC_NAME
+X_train, X_test, y_train, y_test = train_test_split(
+    iris.data,
+    iris.target,
+    test_size=0.2,
+    random_state=42
 )
 
-print(f"Challenger version: {challenger_version}")
-print(f"Challenger {METRIC_NAME}: {challenger_metric}")
 
 # ---------------------------------------------------
-# Comparação Champion vs Challenger
+# Training
 # ---------------------------------------------------
 
-if champion_version:
+with mlflow.start_run(run_name="rf-iris-training"):
 
-    champion_metric = get_metric_for_version(
-        MODEL_NAME,
-        champion_version,
-        METRIC_NAME
+    model = RandomForestClassifier(
+        n_estimators=100,
+        random_state=42
     )
 
-    print(f"Champion version: {champion_version}")
-    print(f"Champion {METRIC_NAME}: {champion_metric}")
+    model.fit(X_train, y_train)
 
-    if challenger_metric > champion_metric:
-        print("RESULT=promote")
-    else:
-        print("RESULT=skip")
+    predictions = model.predict(X_test)
 
-else:
-    # primeiro modelo registrado
-    print("No champion found")
-    print("RESULT=promote")
+    accuracy = accuracy_score(y_test, predictions)
+
+    mlflow.log_param("n_estimators", 100)
+    mlflow.log_metric("accuracy", accuracy)
+
+    model_info = mlflow.sklearn.log_model(
+        sk_model=model,
+        artifact_path="model",
+        registered_model_name="workspace.default.iris-classifier",
+        input_example=X_train[:5],
+    )
+
+    print("Accuracy:", accuracy)
+
+    model_version = model_info.registered_model_version
+
+    print(f"MODEL_VERSION={model_version}")
+
+
+    # ---------------------------------------------------
+    # Exporta valor para Databricks Job
+    # ---------------------------------------------------
+
+    try:
+        from databricks.sdk.runtime import dbutils
+
+        dbutils.jobs.taskValues.set(
+            key="model_version",
+            value=model_version
+        )
+
+        print("Model version exported to task values")
+
+    except Exception:
+        print("Not running inside Databricks Job")
