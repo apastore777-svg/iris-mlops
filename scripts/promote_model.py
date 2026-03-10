@@ -1,19 +1,34 @@
 import mlflow
-import sys
-
-model_name = "workspace.default.iris-classifier"
-version = sys.argv[1]
+from mlflow.tracking import MlflowClient
+from databricks.sdk.runtime import dbutils
 
 mlflow.set_tracking_uri("databricks")
+mlflow.set_registry_uri("databricks-uc")
 
-client = mlflow.MlflowClient()
+MODEL_NAME = "workspace.default.iris-classifier"
 
-print(f"Promoting version {version} to champion...")
+client = MlflowClient()
 
-client.set_registered_model_alias(
-    name=model_name,
-    alias="champion",
-    version=version
+# ---------------------------------------------
+# Pega versão do modelo treinado
+# ---------------------------------------------
+
+model_version = dbutils.jobs.taskValues.get(
+    taskKey="train-model",
+    key="model_version",
+    debugValue="1"
 )
 
-print("Alias champion updated successfully.")
+print(f"Promoting model version: {model_version}")
+
+# ---------------------------------------------
+# Promove para champion
+# ---------------------------------------------
+
+client.set_registered_model_alias(
+    name=MODEL_NAME,
+    alias="champion",
+    version=model_version
+)
+
+print(f"Model version {model_version} promoted to champion")
