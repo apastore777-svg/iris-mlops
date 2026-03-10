@@ -46,7 +46,7 @@ def get_version_by_alias(model_name, alias):
 challenger_version = dbutils.jobs.taskValues.get(
     taskKey="train-model",
     key="model_version",
-    debugValue="1"   # usado apenas se rodar fora de Job
+    debugValue="1"
 )
 
 print("------------------------------------------------")
@@ -84,6 +84,7 @@ if champion_version is None:
     print("Promoting challenger automatically.")
 
     decision = "promote"
+    champion_metric = None
 
 
 # ---------------------------------------------------
@@ -101,10 +102,32 @@ else:
     print(f"Champion version: {champion_version}")
     print(f"Champion {METRIC_NAME}: {champion_metric}")
 
-    if challenger_metric > champion_metric:
+    IMPROVEMENT_THRESHOLD = 0.01  # 1%
+
+    if challenger_metric > champion_metric + IMPROVEMENT_THRESHOLD:
         decision = "promote"
     else:
         decision = "skip"
+
+
+# ---------------------------------------------------
+# Log de governança no MLflow
+# ---------------------------------------------------
+
+mlflow.set_experiment("/Shared/model-governance")
+
+with mlflow.start_run(run_name="model-comparison"):
+
+    mlflow.log_param("model_name", MODEL_NAME)
+    mlflow.log_param("challenger_version", challenger_version)
+    mlflow.log_param("champion_version", champion_version)
+
+    mlflow.log_metric("challenger_accuracy", challenger_metric)
+
+    if champion_metric is not None:
+        mlflow.log_metric("champion_accuracy", champion_metric)
+
+    mlflow.log_param("promotion_decision", decision)
 
 
 print("------------------------------------------------")
