@@ -1,4 +1,3 @@
-```python
 import sys
 import mlflow
 from mlflow.tracking import MlflowClient
@@ -72,5 +71,3 @@ else:
 
 
 print(f"PROMOTE_DECISION={decision}")
-```
-
