@@ -15,7 +15,13 @@ def get_metric_for_version(model_name, version, metric_name):
     mv = client.get_model_version(model_name, version)
     run_id = mv.run_id
     run = client.get_run(run_id)
-    return run.data.metrics.get(metric_name)
+
+    metric = run.data.metrics.get(metric_name)
+
+    if metric is None:
+        raise ValueError(f"Metric {metric_name} not found for version {version}")
+
+    return metric
 
 
 def get_version_by_alias(model_name, alias):
@@ -26,17 +32,22 @@ def get_version_by_alias(model_name, alias):
         return None
 
 
-# ---------------------------------------------------
-# Recebe versão do challenger via argumento
-# ---------------------------------------------------
+# ------------------------------
+# Recebe versão do challenger
+# ------------------------------
 
 if len(sys.argv) < 2:
     raise ValueError("MODEL_VERSION não definido")
 
 challenger_version = sys.argv[1]
 
+print("------------------------------------------------")
+print(f"Challenger version received: {challenger_version}")
+print("------------------------------------------------")
 
-champion_version = get_version_by_alias(MODEL_NAME, "champion")
+# ------------------------------
+# Métrica do challenger
+# ------------------------------
 
 challenger_metric = get_metric_for_version(
     MODEL_NAME,
@@ -44,11 +55,30 @@ challenger_metric = get_metric_for_version(
     METRIC_NAME
 )
 
-print(f"Challenger version: {challenger_version}")
-print(f"Challenger accuracy: {challenger_metric}")
+print(f"Challenger {METRIC_NAME}: {challenger_metric}")
 
+# ------------------------------
+# Busca champion atual
+# ------------------------------
 
-if champion_version:
+champion_version = get_version_by_alias(MODEL_NAME, "champion")
+
+# ------------------------------
+# Caso NÃO exista champion
+# ------------------------------
+
+if champion_version is None:
+
+    print("No champion model found.")
+    print("Promoting challenger automatically.")
+
+    decision = "promote"
+
+# ------------------------------
+# Caso exista champion
+# ------------------------------
+
+else:
 
     champion_metric = get_metric_for_version(
         MODEL_NAME,
@@ -57,17 +87,13 @@ if champion_version:
     )
 
     print(f"Champion version: {champion_version}")
-    print(f"Champion accuracy: {champion_metric}")
+    print(f"Champion {METRIC_NAME}: {champion_metric}")
 
     if challenger_metric > champion_metric:
         decision = "promote"
     else:
         decision = "skip"
 
-else:
-
-    print("No champion found")
-    decision = "promote"
-
-
+print("------------------------------------------------")
 print(f"PROMOTE_DECISION={decision}")
+print("------------------------------------------------")
