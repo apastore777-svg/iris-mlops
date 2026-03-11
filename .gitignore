@@ -1,40 +1,41 @@
-venv/
-mlruns/
-training/mlruns/
-__pycache__/
-*.pyc
-.env
-build/
-structure.txt
-infra/kubernetes/platform/istio/bin/
-infra/kubernetes/platform/istio/
-# Docker artifacts
-response.json
-*.tar
-*.log
-
-# Local virtual env
-venv/
-.env
-
-# Random files
-Removed
-Running
-Using
 # Python
 __pycache__/
 *.pyc
 
-# virtualenv
+# Virtual environments
+venv/
 .venv/
 
-# MLflow local
+# Environment variables
+.env
+
+# MLflow
 mlflow.db
+mlruns/
 
-# artifacts
-*.json
-!create_endpoint.json
+# Training artifacts
+training/mlruns/
 
-# OS
+# Build
+build/
+
+# Logs
+*.log
+
+# Docker artifacts
+*.tar
+
+# OS files
 .DS_Store
 Thumbs.db
+
+# Project temp files
+structure.txt
+response.json
+
+# Kubernetes platform binaries
+infra/kubernetes/platform/istio/
+infra/kubernetes/platform/istio/bin/
+
+#Serving
+serving/api/output.json
