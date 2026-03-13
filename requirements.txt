@@ -5,6 +5,6 @@ joblib==1.5.3
 mlflow==3.10.1
 mlflow_skinny==3.10.1
 mlflow_tracing==3.10.1
-numpy==2.4.3
+numpy==2.2.6
 Requests==2.32.5
 scikit_learn==1.8.0
