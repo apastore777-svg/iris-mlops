@@ -9,9 +9,11 @@ ACCOUNT=494722910828
 REGION=us-east-2
 ECR=$ACCOUNT.dkr.ecr.$REGION.amazonaws.com/iris-model
 
+TAG=$(date +%s)
+
 echo "Using MLflow stage: $STAGE"
 
-export MLFLOW_TRACKING_URI=http://SEU_LOAD_BALANCER:5000
+export MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI:-http://localhost:5000}
 
 rm -rf build
 mkdir build
@@ -22,11 +24,18 @@ mlflow artifacts download \
 --artifact-uri models:/$MODEL_NAME/$STAGE \
 --dst-path build/
 
+echo "Preparing model for container..."
+
+rm -rf serving/api/model
+mkdir -p serving/api/model
+
+cp -r build/* serving/api/model/
+
 echo "Building Docker image..."
 
 docker build \
 -t iris-model \
--f serving/iris/Dockerfile \
+-f serving/api/Dockerfile \
 .
 
 echo "Logging into ECR..."
@@ -38,10 +47,12 @@ aws ecr get-login-password \
 
 echo "Tagging image..."
 
-docker tag iris-model:latest $ECR:latest
+docker tag iris-model $ECR:$TAG
+docker tag iris-model $ECR:latest
 
 echo "Pushing image..."
 
+docker push $ECR:$TAG
 docker push $ECR:latest
 
 echo "Deploying..."
@@ -63,4 +74,4 @@ elif [ "$STAGE" == "Production" ]; then
 
 fi
 
-echo "Done."
+echo "Deployment complete."

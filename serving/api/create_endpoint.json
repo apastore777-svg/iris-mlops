@@ -1,0 +1,13 @@
+{
+  "name": "iris-serving-endpoint",
+  "config": {
+    "served_models": [
+      {
+        "model_name": "workspace.default.iris-classifier",
+        "model_version": "1",
+        "workload_size": "Small",
+        "scale_to_zero_enabled": true
+      }
+    ]
+  }
+}
