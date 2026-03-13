@@ -6,7 +6,7 @@ echo "-------------------------------------"
 echo "STEP 1 - Training model"
 echo "-------------------------------------"
 
-python training/train_iris_mlflow.py
+python src/training/train_iris_mlflow.py
 
 
 echo "-------------------------------------"
@@ -26,16 +26,33 @@ python scripts/set_candidate.py $VERSION
 
 
 echo "-------------------------------------"
-echo "STEP 4 - Testing endpoint"
+echo "STEP 4 - Running tests"
 echo "-------------------------------------"
 
-python scripts/test_candidate.py
+pytest
 
 
 echo "-------------------------------------"
-echo "STEP 5 - Awaiting approval"
+echo "STEP 5 - Promoting model"
 echo "-------------------------------------"
 
-echo "To promote model run:"
-echo "./scripts/approve_candidate.sh $VERSION"
-echo "./scripts/update_serving_endpoint.sh $VERSION"
+python scripts/promote_model.py $VERSION
+
+
+echo "-------------------------------------"
+echo "STEP 6 - Building Docker image"
+echo "-------------------------------------"
+
+bash scripts/build_and_push.sh
+
+
+echo "-------------------------------------"
+echo "STEP 7 - Deploying model"
+echo "-------------------------------------"
+
+bash scripts/deploy_from_mlflow.sh Production
+
+
+echo "-------------------------------------"
+echo "PIPELINE COMPLETE"
+echo "-------------------------------------"
