@@ -55,7 +55,7 @@ jobs:
 
       - name: Test endpoint
         run: |
-          python tests/serving/test_candidate.py
+          python tests/serving/test_candidate.py 
 
   deploy:
     needs: train
