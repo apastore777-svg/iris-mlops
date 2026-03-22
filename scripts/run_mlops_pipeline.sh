@@ -1,36 +1,19 @@
 #!/bin/bash
 
-set -e
+echo "🚀 Running training..."
+python pipelines/training_pipeline.py
 
-echo "-------------------------------------"
-echo "STEP 1 - Training model"
-echo "-------------------------------------"
+echo "🔍 Running validation..."
+python pipelines/model_validation_pipeline.py
 
-python src/training/train_iris_mlflow.py
+echo "📊 Checking decision..."
 
-echo "-------------------------------------"
-echo "STEP 2 - Getting latest model version"
-echo "-------------------------------------"
+DECISION=$(cat artifacts/decision.json | jq -r '.decision')
 
-VERSION=$(python scripts/get_latest_model_version.py)
-echo "Latest version detected: $VERSION"
+echo "Decision: $DECISION"
 
-echo "-------------------------------------"
-echo "STEP 3 - Setting candidate"
-echo "-------------------------------------"
-
-python scripts/set_candidate.py $VERSION
-
-echo "-------------------------------------"
-echo "STEP 4 - Testing endpoint"
-echo "-------------------------------------"
-
-python tests/serving/test_candidate.py
-
-echo "-------------------------------------"
-echo "STEP 5 - Awaiting approval"
-echo "-------------------------------------"
-
-echo "To promote model run:"
-echo "./scripts/approve_candidate.sh $VERSION"
-echo "./scripts/update_serving_endpoint.sh $VERSION"
+if [ "$DECISION" == "promote" ]; then
+    echo "✅ Model approved (candidate ready)"
+else
+    echo "❌ Model rejected"
+fi

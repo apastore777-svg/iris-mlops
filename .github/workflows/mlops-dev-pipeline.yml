@@ -1,0 +1,16 @@
+name: MLOps DEV Pipeline
+
+on:
+  push:
+    branches: [ "develop" ]
+
+jobs:
+  train-and-validate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - checkout
+      - setup python
+      - install deps
+      - run train_model.py
+      - run compare_models.py
