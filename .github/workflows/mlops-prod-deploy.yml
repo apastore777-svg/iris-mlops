@@ -1,0 +1,35 @@
+name: Deploy to Production
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy-prod:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: prod   # 🔐 usa o environment que você já tem
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Promote model to Production (MLflow)
+        run: python src/deployment/promote_model.py
+
+      - name: Build and Push Image
+        run: bash scripts/build_and_push.sh
+
+      - name: Deploy to Kubernetes (PROD)
+        run: kubectl apply -f infra/kubernetes/prod/
+
+      - name: Done
+        run: echo "🚀 Production deploy completed"
