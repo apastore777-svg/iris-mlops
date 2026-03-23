@@ -1,5 +1,9 @@
 from mlflow.tracking import MlflowClient
 
+import mlflow
+
+mlflow.set_tracking_uri("databricks")
+
 MODEL_NAME = "iris-classifier"
 
 client = MlflowClient()
