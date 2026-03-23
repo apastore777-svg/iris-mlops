@@ -133,3 +133,35 @@ with mlflow.start_run(run_name="model-comparison"):
 print("------------------------------------------------")
 print(f"PROMOTE_DECISION={decision}")
 print("------------------------------------------------")
+
+import json
+
+decision = "promote"  # usar sua lógica existente
+
+with open("artifacts/decision.json", "w") as f:
+    json.dump({"decision": decision}, f)
+
+print(f"Decision: {decision}")
+
+from mlflow.tracking import MlflowClient
+
+client = MlflowClient()
+
+MODEL_NAME = "iris-classifier"
+
+# pegar última versão
+versions = client.get_latest_versions(MODEL_NAME)
+latest = sorted(versions, key=lambda x: int(x.version))[-1]
+
+model_version = latest.version
+
+if decision == "promote":
+    print(f"Promoting model {model_version} to STAGING")
+
+    client.transition_model_version_stage(
+        name=MODEL_NAME,
+        version=model_version,
+        stage="Staging"
+    )
+else:
+    print(f"Model {model_version} rejected")

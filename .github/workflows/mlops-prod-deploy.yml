@@ -1,0 +1,41 @@
+name: MLOps PROD Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev   # depois você pode mudar para main
+
+jobs:
+  deploy-prod:
+    runs-on: ubuntu-latest
+
+    environment:
+      name: prod   # 🔐 approval obrigatório aqui
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Start
+        run: echo "🚀 Starting PROD deployment..."
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.10
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Promote model (MLflow)
+        run: python src/deployment/promote_model.py
+
+      - name: Build and Push
+        run: bash scripts/build_and_push.sh
+
+      - name: Deploy Kubernetes
+        run: kubectl apply -f infra/kubernetes/prod/
+
+      - name: Finish
+        run: echo "✅ Production deployed"

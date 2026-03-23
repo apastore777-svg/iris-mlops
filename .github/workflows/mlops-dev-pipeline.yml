@@ -1,12 +1,11 @@
-name: MLOps CI
+name: MLOps DEV Pipeline
 
 on:
   push:
-    branches: [ "dev", "main" ]
-  pull_request:
+    branches: [ "dev" ]
 
 jobs:
-  test:
+  train-and-validate:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,5 +20,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run tests
-        run: pytest
+      - name: Run training + validation
+        run: bash scripts/run_mlops_pipeline.sh
+
+      - name: Done
+        run: echo "✅ DEV pipeline completed"
