@@ -1,33 +1,22 @@
 from mlflow.tracking import MlflowClient
 
-client = MlflowClient()
-
 MODEL_NAME = "iris-classifier"
 
-# pega modelo em staging
-staging_versions = client.get_latest_versions(MODEL_NAME, stages=["Staging"])
+client = MlflowClient()
 
-if not staging_versions:
-    raise Exception("No model in STAGING")
+try:
+    # pega o modelo candidate
+    candidate = client.get_model_version_by_alias(MODEL_NAME, "candidate")
 
-model_version = staging_versions[0].version
+    # promove para champion
+    client.set_registered_model_alias(
+        name=MODEL_NAME,
+        alias="champion",
+        version=candidate.version
+    )
 
-print(f"Promoting model {model_version} to PRODUCTION")
+    print(f"🚀 Promoted version {candidate.version} to champion")
 
-# move para produção
-client.transition_model_version_stage(
-    name=MODEL_NAME,
-    version=model_version,
-    stage="Production"
-)
-
-# opcional: arquivar versões antigas
-prod_versions = client.get_latest_versions(MODEL_NAME, stages=["Production"])
-
-for v in prod_versions:
-    if v.version != model_version:
-        client.transition_model_version_stage(
-            name=MODEL_NAME,
-            version=v.version,
-            stage="Archived"
-        )
+except Exception as e:
+    print(f"❌ Error promoting model: {e}")
+    exit(1)
