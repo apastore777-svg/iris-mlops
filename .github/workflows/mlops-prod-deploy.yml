@@ -18,36 +18,46 @@ jobs:
       DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
 
     steps:
+      # 1️⃣ Pega o código do repositório
       - name: Checkout
         uses: actions/checkout@v3
 
+      # 2️⃣ Mensagem inicial
       - name: Start
         run: echo "🚀 Starting PROD deployment..."
 
+      # 3️⃣ Configura Python
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.10"
 
+      # 4️⃣ Instala dependências
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      # 5️⃣ Promove modelo
       - name: Promote model
         run: python src/deployment/promote_model.py
 
-      # 🔥 Configurar credenciais AWS
+      # 6️⃣ Configura credenciais AWS
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2
+          aws-region: us-east-2   # Região corrigida
 
+      # 7️⃣ Build e push do Docker
       - name: Build and Push Docker Image
-        run: bash scripts/build_and_push.sh
+        run: |
+          docker build -t my-serving-image ./serving/api
+          docker push my-serving-image
 
+      # 8️⃣ Deploy no Kubernetes
       - name: Deploy Kubernetes
         run: kubectl apply -f infra/kubernetes/prod/
 
+      # 9️⃣ Mensagem final
       - name: Finish
         run: echo "✅ Production deployed"
