@@ -4,14 +4,18 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - dev   # depois você pode mudar para main
+      - main   # 🔥 PRODUÇÃO DE VERDADE
 
 jobs:
   deploy-prod:
     runs-on: ubuntu-latest
 
     environment:
-      name: prod   # 🔐 approval obrigatório aqui
+      name: prod   # 🔐 approval obrigatório
+
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
 
     steps:
       - name: Checkout
