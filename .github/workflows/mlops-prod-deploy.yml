@@ -4,14 +4,14 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - main   # 🔥 PRODUÇÃO DE VERDADE
+      - main
 
 jobs:
   deploy-prod:
     runs-on: ubuntu-latest
 
     environment:
-      name: prod   # 🔐 approval obrigatório
+      name: prod
 
     env:
       DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
@@ -32,7 +32,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Promote model (MLflow)
+      - name: Promote model
         run: python src/deployment/promote_model.py
 
       - name: Build and Push
