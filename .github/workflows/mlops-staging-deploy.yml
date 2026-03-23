@@ -1,11 +1,10 @@
-name: MLOps DEV Pipeline
+name: MLOps STAGING Deploy
 
 on:
-  push:
-    branches: [ "dev" ]
+  workflow_dispatch:
 
 jobs:
-  train-and-validate:
+  deploy-staging:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,8 +19,8 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Run training + validation
-        run: bash scripts/run_mlops_pipeline.sh
+      - name: Deploy to STAGING (QA)
+        run: bash scripts/deploy_staging.sh
 
       - name: Done
-        run: echo "✅ DEV pipeline completed"
+        run: echo "✅ STAGING deployment completed"

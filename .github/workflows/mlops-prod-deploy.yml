@@ -1,25 +1,24 @@
-name: Deploy to Production
+name: MLOps PROD Deploy
 
 on:
   workflow_dispatch:
   push:
     branches:
-      - dev
+      - dev   # depois você pode mudar para main
 
 jobs:
   deploy-prod:
     runs-on: ubuntu-latest
 
-    # 🔐 GATE DE APROVAÇÃO (USA SEU ENVIRONMENT EXISTENTE)
     environment:
-      name: prod
+      name: prod   # 🔐 approval obrigatório aqui
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Debug start
-        run: echo "🚀 Starting production deployment pipeline"
+      - name: Start
+        run: echo "🚀 Starting PROD deployment..."
 
       - name: Setup Python
         uses: actions/setup-python@v4
@@ -27,26 +26,16 @@ jobs:
           python-version: 3.10
 
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
+        run: pip install -r requirements.txt
 
-      # 🔥 PROMOÇÃO REAL NO MLflow
-      - name: Promote model to Production (MLflow)
-        run: |
-          echo "📦 Promoting model to Production..."
-          python src/deployment/promote_model.py
+      - name: Promote model (MLflow)
+        run: python src/deployment/promote_model.py
 
-      # 🔥 BUILD + PUSH (USA SEU SCRIPT EXISTENTE)
-      - name: Build and Push Docker image
-        run: |
-          echo "🐳 Building and pushing image..."
-          bash scripts/build_and_push.sh
+      - name: Build and Push
+        run: bash scripts/build_and_push.sh
 
-      # 🔥 DEPLOY K8S PROD
-      - name: Deploy to Kubernetes (PROD)
-        run: |
-          echo "☸️ Deploying to Kubernetes PROD..."
-          kubectl apply -f infra/kubernetes/prod/
+      - name: Deploy Kubernetes
+        run: kubectl apply -f infra/kubernetes/prod/
 
-      - name: Final step
-        run: echo "✅ Production deployment completed successfully"
+      - name: Finish
+        run: echo "✅ Production deployed"
