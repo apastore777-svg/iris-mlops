@@ -18,7 +18,7 @@ jobs:
       DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
 
     steps:
-      # 1️⃣ Pega o código do repositório
+      # 1️⃣ Checkout do repositório
       - name: Checkout
         uses: actions/checkout@v3
 
@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: "3.10"
 
-      # 4️⃣ Instala dependências
+      # 4️⃣ Instala dependências Python
       - name: Install dependencies
         run: pip install -r requirements.txt
 
@@ -46,18 +46,25 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-2   # Região corrigida
+          aws-region: us-east-2
 
-      # 7️⃣ Build e push do Docker
+      # 7️⃣ Login no ECR
+      - name: Login to ECR
+        run: |
+          aws ecr get-login-password --region us-east-2 | \
+          docker login --username AWS --password-stdin 494722910828.dkr.ecr.us-east-2.amazonaws.com
+
+      # 8️⃣ Build e push Docker para ECR
       - name: Build and Push Docker Image
         run: |
-          docker build -t my-serving-image ./serving/api
-          docker push my-serving-image
+          docker build -t iris-api ./serving/api
+          docker tag iris-api:latest 494722910828.dkr.ecr.us-east-2.amazonaws.com/iris-api:latest
+          docker push 494722910828.dkr.ecr.us-east-2.amazonaws.com/iris-api:latest
 
-      # 8️⃣ Deploy no Kubernetes
+      # 9️⃣ Deploy Kubernetes
       - name: Deploy Kubernetes
         run: kubectl apply -f infra/kubernetes/prod/
 
-      # 9️⃣ Mensagem final
+      # 🔟 Mensagem final
       - name: Finish
         run: echo "✅ Production deployed"
